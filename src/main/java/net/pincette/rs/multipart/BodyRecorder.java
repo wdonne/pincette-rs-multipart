@@ -1,16 +1,17 @@
 package net.pincette.rs.multipart;
 
 import static java.nio.ByteBuffer.allocate;
+import static net.pincette.rs.QueuePublisher.queuePublisher;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.Flow.Publisher;
-import net.pincette.rs.DequePublisher;
+import net.pincette.rs.QueuePublisher;
 
 /**
  * @author Werner Donné
  */
 class BodyRecorder implements Recorder {
-  private final DequePublisher<ByteBuffer> publisher = new DequePublisher<>();
+  private final QueuePublisher<ByteBuffer> publisher = queuePublisher();
   private ByteBuffer buffer;
   private boolean complete;
 
@@ -55,7 +56,7 @@ class BodyRecorder implements Recorder {
     if (buffer != null) {
       buffer.limit(buffer.position());
       buffer.position(0);
-      publisher.getDeque().addFirst(buffer);
+      publisher.getQueue().add(buffer);
       buffer = null;
     }
   }

@@ -148,7 +148,7 @@ public class MultipartDecoder extends ProcessorBase<ByteBuffer, BodyPart> {
 
   @Override
   public void onNext(final ByteBuffer buffer) {
-    stateMachine.next(buffer);
+    dispatch(() -> stateMachine.next(buffer));
   }
 
   private boolean ongoingBody() {

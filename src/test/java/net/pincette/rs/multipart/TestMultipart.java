@@ -9,10 +9,12 @@ import static java.nio.file.StandardOpenOption.SYNC;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Objects.deepEquals;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.CompletableFuture.allOf;
 import static net.pincette.io.StreamConnector.copy;
 import static net.pincette.rs.Chain.with;
 import static net.pincette.rs.ReadableByteChannelPublisher.readableByteChannel;
 import static net.pincette.rs.Util.join;
+import static net.pincette.rs.Util.onComplete;
 import static net.pincette.rs.WritableByteChannelSubscriber.writableByteChannel;
 import static net.pincette.util.Collections.map;
 import static net.pincette.util.Collections.put;
@@ -31,6 +33,8 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import net.pincette.rs.Fanout;
 import net.pincette.rs.Source;
 import net.pincette.util.Pair;
 import org.junit.jupiter.api.DisplayName;
@@ -108,6 +112,8 @@ class TestMultipart {
 
   private void test(final int bufferSize, final byte[] extra, final boolean transportPadding) {
     final List<Pair<File, File>> files = files();
+    final Map<String, CompletableFuture<Void>> futures =
+        map(files.stream().map(p -> pair(p.second.getName(), new CompletableFuture<>())));
     final List<Map<String, String[]>> headers = new ArrayList<>();
 
     try {
@@ -123,27 +129,32 @@ class TestMultipart {
               .map(new MultipartDecoder(BOUNDARY))
               .map(
                   bodyPart -> {
+                    var name = new File(bodyPart.headers().get("Filename")[0]).getName();
+
                     headers.add(bodyPart.headers());
-                    System.out.println(new File(bodyPart.headers().get("Filename")[0]).getName());
+                    System.out.println(name);
 
                     tryToDoRethrow(
                         () ->
                             bodyPart
                                 .body()
                                 .subscribe(
-                                    writableByteChannel(
-                                        open(
-                                            new File(bodyPart.headers().get("Filename")[0])
-                                                .toPath(),
-                                            CREATE,
-                                            WRITE,
-                                            SYNC))));
+                                    Fanout.of(
+                                        writableByteChannel(
+                                            open(
+                                                new File(bodyPart.headers().get("Filename")[0])
+                                                    .toPath(),
+                                                CREATE,
+                                                WRITE,
+                                                SYNC)),
+                                        onComplete(() -> futures.get(name).complete(null)))));
 
                     return bodyPart;
                   })
               .buffer(1) // Backpressure violation test.
               .get());
 
+      allOf(futures.values().toArray(CompletableFuture[]::new)).join();
       checkHeaders(headers);
       compareFiles(files);
     } finally {
