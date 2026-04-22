@@ -7,7 +7,7 @@
   <groupId>net.pincette</groupId>
   <artifactId>pincette-rs-multipart</artifactId>
   <packaging>jar</packaging>
-  <version>1.0.5</version>
+  <version>1.0.6</version>
   <name>pincette-rs-multipart</name>
   <description>Reactive Streams MIME multipart processor</description>
   <url>https://github.com/wdonne/pincette-rs-multipart</url>
@@ -57,7 +57,7 @@
     <dependency>
       <groupId>net.pincette</groupId>
       <artifactId>pincette-rs</artifactId>
-      <version>3.11.6</version>
+      <version>3.11.7</version>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
